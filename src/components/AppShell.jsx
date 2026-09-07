@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { LayoutDashboard, Users, ShieldCheck, Building2, BarChart3, LogOut, Menu, X } from 'lucide-react'
 import logo from '../assets/gaffas-logo.jpg'
-import { ROLES, listSucursales } from '../lib/storage.js'
-import { useSucursal, TODAS_LAS_SUCURSALES } from '../context/sucursalContext.js'
+import { ROLES } from '../lib/storage.js'
+import { useSucursal, useSucursales, TODAS_LAS_SUCURSALES } from '../context/sucursalContext.js'
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -21,11 +21,19 @@ function initials(name = '') {
 export default function AppShell({ session, activeView, onNavigate, onLogout, children }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { sucursalActiva, setSucursalActiva } = useSucursal()
-  const sucursales = listSucursales()
+  const { sucursales } = useSucursales()
   const isPatientsSection = ['patients', 'patientForm', 'patientProfile', 'visitForm', 'report'].includes(
     activeView,
   )
   const isDashboard = activeView === 'dashboard'
+  // No hay un rol de administrador dedicado en el día a día: optometrista
+  // cubre esas funciones de gestión. Recepción se queda fuera a propósito.
+  const puedeGestionar = session.role !== ROLES.RECEPCION
+  // El logo de la barra lateral refleja la sucursal activa (su propia foto);
+  // si no tiene una, o si se ve "Todas las sucursales", cae al logo genérico.
+  const sucursalActivaObj =
+    sucursalActiva !== TODAS_LAS_SUCURSALES ? sucursales.find((s) => s.nombre === sucursalActiva) : null
+  const brandLogo = sucursalActivaObj?.foto || logo
 
   function go(key) {
     onNavigate(key)
@@ -43,7 +51,7 @@ export default function AppShell({ session, activeView, onNavigate, onLogout, ch
         >
           <Menu size={20} />
         </button>
-        <img src={logo} alt="Gaffas Correctas" className="sidebar__logo" />
+        <img src={brandLogo} alt="Gaffas Correctas" className="sidebar__logo" />
         <span className="sidebar__brand-name" style={{ color: 'var(--ink)' }}>
           OptiScale
         </span>
@@ -55,10 +63,10 @@ export default function AppShell({ session, activeView, onNavigate, onLogout, ch
 
       <aside className={`sidebar no-print ${mobileOpen ? 'is-open' : ''}`}>
         <div className="sidebar__brand">
-          <img src={logo} alt="Gaffas Correctas" className="sidebar__logo" />
+          <img src={brandLogo} alt="Gaffas Correctas" className="sidebar__logo" />
           <div className="sidebar__brand-text">
             <span className="sidebar__brand-name">OptiScale</span>
-            <span className="sidebar__brand-tag">RECEVI · Gaffas Correctas</span>
+            <span className="sidebar__brand-tag">Óptica Gaffas Correctas</span>
           </div>
           <button
             type="button"
@@ -82,9 +90,7 @@ export default function AppShell({ session, activeView, onNavigate, onLogout, ch
                 {s.nombre}
               </option>
             ))}
-            {session.role === ROLES.ADMIN && (
-              <option value={TODAS_LAS_SUCURSALES}>Todas las sucursales</option>
-            )}
+            {puedeGestionar && <option value={TODAS_LAS_SUCURSALES}>Todas las sucursales</option>}
           </select>
         </div>
 
@@ -114,7 +120,7 @@ export default function AppShell({ session, activeView, onNavigate, onLogout, ch
               Estadísticas
             </button>
           )}
-          {session.role === ROLES.ADMIN && (
+          {puedeGestionar && (
             <>
               <button
                 type="button"

@@ -6,6 +6,9 @@ export async function login(usuario, password) {
   if (!user) throw new Error('Usuario o contraseña incorrectos.')
   const hash = await hashPassword(password)
   if (hash !== user.passwordHash) throw new Error('Usuario o contraseña incorrectos.')
+  if (user.activo === false) {
+    throw new Error('Esta cuenta está desactivada. Pide a otro usuario con permisos que la reactive.')
+  }
   return saveSession(user)
 }
 

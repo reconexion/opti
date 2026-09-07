@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Save, ClipboardCheck, Eye, Stethoscope, Moon } from 'lucide-react'
-import { findPatient, getLastVisitForPatient, createVisit } from '../lib/storage.js'
+import { findPatient, findVisit, getLastVisitForPatient, createVisit, updateVisit } from '../lib/storage.js'
 import { ANEXOS, DIAGNOSTICOS, validarEje } from '../lib/clinicalLogic.js'
 
 const EMPTY_RX = { esfera: '', cilindro: '', eje: '', adicion: '' }
@@ -64,34 +64,44 @@ const STEPS = [
   { label: 'Perfil de uso visual', icon: Moon },
 ]
 
-export default function VisitForm({ patientId, session, onBack, onSaved }) {
+export default function VisitForm({ patientId, visitId, session, onBack, onSaved }) {
   const patient = findPatient(patientId)
-  const lastVisit = getLastVisitForPatient(patientId)
+  const editingVisit = visitId ? findVisit(visitId) : null
+  const isEditing = !!editingVisit
+  const lastVisit = isEditing ? null : getLastVisitForPatient(patientId)
 
   const [step, setStep] = useState(0)
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [fecha, setFecha] = useState(editingVisit?.fecha || new Date().toISOString().slice(0, 10))
   const [anexos, setAnexos] = useState(
-    Object.fromEntries(ANEXOS.map((a) => [a.key, { checked: false, observaciones: '' }])),
+    editingVisit?.anexos || Object.fromEntries(ANEXOS.map((a) => [a.key, { checked: false, observaciones: '' }])),
   )
-  const [rxAnterior, setRxAnterior] = useState({
-    od: lastVisit ? { ...lastVisit.rxActual.od } : { ...EMPTY_RX },
-    oi: lastVisit ? { ...lastVisit.rxActual.oi } : { ...EMPTY_RX },
-  })
-  const [rxActual, setRxActual] = useState({ od: { ...EMPTY_RX }, oi: { ...EMPTY_RX } })
+  const [rxAnterior, setRxAnterior] = useState(
+    editingVisit?.rxAnterior || {
+      od: lastVisit ? { ...lastVisit.rxActual.od } : { ...EMPTY_RX },
+      oi: lastVisit ? { ...lastVisit.rxActual.oi } : { ...EMPTY_RX },
+    },
+  )
+  const [rxActual, setRxActual] = useState(
+    editingVisit?.rxActual || { od: { ...EMPTY_RX }, oi: { ...EMPTY_RX } },
+  )
   const [diagnostico, setDiagnostico] = useState(
-    Object.fromEntries(DIAGNOSTICOS.map((d) => [d.key, false])),
+    Object.fromEntries(DIAGNOSTICOS.map((d) => [d.key, editingVisit?.diagnostico?.[d.key] || false])),
   )
-  const [diagnosticoObservaciones, setDiagnosticoObservaciones] = useState('')
-  const [perfilVisual, setPerfilVisual] = useState({
-    horaDormir: '',
-    horaDespertar: '',
-    usoPantallas: '',
-    actividadesCerca: '',
-    actividadesLejos: '',
-    exposicionSolar: '',
-    observaciones: '',
-  })
-  const [observaciones, setObservaciones] = useState('')
+  const [diagnosticoObservaciones, setDiagnosticoObservaciones] = useState(
+    editingVisit?.diagnostico?.observaciones || '',
+  )
+  const [perfilVisual, setPerfilVisual] = useState(
+    editingVisit?.perfilVisual || {
+      horaDormir: '',
+      horaDespertar: '',
+      usoPantallas: '',
+      actividadesCerca: '',
+      actividadesLejos: '',
+      exposicionSolar: '',
+      observaciones: '',
+    },
+  )
+  const [observaciones, setObservaciones] = useState(editingVisit?.observaciones || '')
   const [error, setError] = useState('')
 
   if (!patient) {
@@ -117,18 +127,21 @@ export default function VisitForm({ patientId, session, onBack, onSaved }) {
       setError('Revisa el eje del astigmatismo: debe estar entre 0 y 180 grados.')
       return
     }
-    const visit = createVisit({
-      patientId,
+    const payload = {
       fecha,
-      optometrista: session.nombre,
-      sucursal: patient.sucursal,
       anexos,
       rxAnterior,
       rxActual,
       diagnostico: { ...diagnostico, observaciones: diagnosticoObservaciones },
       perfilVisual,
       observaciones,
-    })
+    }
+    // La sucursal no se copia aquí: el reporte siempre usa la sucursal
+    // actual del paciente (lib/storage.js), así que si esta cambia después
+    // no queda una copia vieja pegada en la consulta.
+    const visit = isEditing
+      ? updateVisit(visitId, payload)
+      : createVisit({ ...payload, patientId, optometrista: session.nombre })
     onSaved(visit.id)
   }
 
@@ -141,7 +154,7 @@ export default function VisitForm({ patientId, session, onBack, onSaved }) {
 
       <div className="page-header">
         <div>
-          <h1>Nueva consulta</h1>
+          <h1>{isEditing ? 'Editar consulta' : 'Nueva consulta'}</h1>
           <p>{patient.nombre}</p>
         </div>
         <div className="page-header__actions">
@@ -213,9 +226,11 @@ export default function VisitForm({ patientId, session, onBack, onSaved }) {
             <section className="reveal">
               <h2>Graduación</h2>
               <p style={{ marginTop: -6 }}>
-                {lastVisit
-                  ? 'RX anterior traída automáticamente de la última visita registrada. Puedes ajustarla si es necesario.'
-                  : 'No hay visita previa registrada. Si el paciente trae una graduación de otro lugar, captúrala aquí; si no, déjala en blanco.'}
+                {isEditing
+                  ? 'Estás corrigiendo la graduación ya guardada de esta consulta.'
+                  : lastVisit
+                    ? 'RX anterior traída automáticamente de la última visita registrada. Puedes ajustarla si es necesario.'
+                    : 'No hay visita previa registrada. Si el paciente trae una graduación de otro lugar, captúrala aquí; si no, déjala en blanco.'}
               </p>
               <div className="eye-grid">
                 <RxInputs label="RX Anterior — Ojo derecho (OD)" side="od" value={rxAnterior.od} onChange={(v) => setRxAnterior({ ...rxAnterior, od: v })} />
@@ -339,7 +354,7 @@ export default function VisitForm({ patientId, session, onBack, onSaved }) {
           {step === STEPS.length - 1 && (
             <button type="submit" className="btn btn--primary">
               <Save size={16} />
-              Guardar consulta
+              {isEditing ? 'Guardar cambios' : 'Guardar consulta'}
             </button>
           )}
         </div>

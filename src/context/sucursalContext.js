@@ -15,3 +15,15 @@ export function useSucursal() {
 export function coincideSucursal(valorSucursal, activa) {
   return activa === TODAS_LAS_SUCURSALES || valorSucursal === activa
 }
+
+// Sucursales (nombre + foto) vive en este contexto como estado reactivo, no
+// como una simple lectura de localStorage en cada render: si un componente
+// que no se vuelve a montar (como el logo de la barra lateral) leyera
+// localStorage directamente, un cambio hecho en otra pantalla (ej. subir una
+// foto) no se reflejaría hasta la siguiente navegación. `refreshSucursales`
+// lo fuerza a actualizarse de inmediato en todos los que lo consulten.
+export function useSucursales() {
+  const ctx = useContext(SucursalContext)
+  if (!ctx) throw new Error('useSucursales debe usarse dentro de SucursalProvider')
+  return { sucursales: ctx.sucursales, refreshSucursales: ctx.refreshSucursales }
+}

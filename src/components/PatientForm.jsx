@@ -1,25 +1,30 @@
 import { useState } from 'react'
 import { ArrowLeft, Save } from 'lucide-react'
-import { createPatient, listSucursales } from '../lib/storage.js'
+import { createPatient, updatePatient, findPatient, listSucursales } from '../lib/storage.js'
 import { useSucursal, TODAS_LAS_SUCURSALES } from '../context/sucursalContext.js'
 
-export default function PatientForm({ onBack, onCreated }) {
+export default function PatientForm({ patientId, onBack, onSaved }) {
   const { sucursalActiva } = useSucursal()
   const sucursales = listSucursales()
+  const editingPatient = patientId ? findPatient(patientId) : null
+  const isEditing = !!editingPatient
   const sucursalPorDefecto = sucursalActiva !== TODAS_LAS_SUCURSALES ? sucursalActiva : sucursales[0]?.nombre || ''
-  const [nombre, setNombre] = useState('')
-  const [expediente, setExpediente] = useState('')
-  const [sucursal, setSucursal] = useState(sucursalPorDefecto)
-  const [telefono, setTelefono] = useState('')
-  const [correo, setCorreo] = useState('')
+
+  const [nombre, setNombre] = useState(editingPatient?.nombre || '')
+  const [expediente, setExpediente] = useState(editingPatient?.expediente || '')
+  const [sucursal, setSucursal] = useState(editingPatient?.sucursal || sucursalPorDefecto)
+  const [telefono, setTelefono] = useState(editingPatient?.telefono || '')
+  const [correo, setCorreo] = useState(editingPatient?.correo || '')
   const [error, setError] = useState('')
 
   function handleSubmit(e) {
     e.preventDefault()
     setError('')
     try {
-      const patient = createPatient({ nombre, expediente, sucursal, telefono, correo })
-      onCreated(patient.id)
+      const patient = isEditing
+        ? updatePatient(patientId, { nombre, expediente, sucursal, telefono, correo })
+        : createPatient({ nombre, expediente, sucursal, telefono, correo })
+      onSaved(patient.id)
     } catch (err) {
       setError(err.message)
     }
@@ -33,8 +38,12 @@ export default function PatientForm({ onBack, onCreated }) {
       </button>
       <div className="page-header">
         <div>
-          <h1>Nuevo paciente</h1>
-          <p>Datos básicos para abrir su expediente. El historial de visitas se agrega después.</p>
+          <h1>{isEditing ? 'Editar paciente' : 'Nuevo paciente'}</h1>
+          <p>
+            {isEditing
+              ? 'Corrige los datos básicos del paciente. El historial de visitas no se modifica aquí.'
+              : 'Datos básicos para abrir su expediente. El historial de visitas se agrega después.'}
+          </p>
         </div>
       </div>
 
@@ -87,7 +96,7 @@ export default function PatientForm({ onBack, onCreated }) {
           <div className="form-actions">
             <button type="submit" className="btn btn--primary">
               <Save size={16} />
-              Guardar paciente
+              {isEditing ? 'Guardar cambios' : 'Guardar paciente'}
             </button>
           </div>
         </form>

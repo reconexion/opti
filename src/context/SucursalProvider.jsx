@@ -16,6 +16,7 @@ function valorInicial() {
 
 export function SucursalProvider({ children }) {
   const [sucursalActiva, setSucursalActivaState] = useState(valorInicial)
+  const [sucursales, setSucursales] = useState(() => listSucursales())
 
   function setSucursalActiva(valor) {
     setSucursalActivaState(valor)
@@ -26,8 +27,12 @@ export function SucursalProvider({ children }) {
     }
   }
 
+  function refreshSucursales() {
+    setSucursales(listSucursales())
+  }
+
   return (
-    <SucursalContext.Provider value={{ sucursalActiva, setSucursalActiva }}>
+    <SucursalContext.Provider value={{ sucursalActiva, setSucursalActiva, sucursales, refreshSucursales }}>
       {children}
     </SucursalContext.Provider>
   )

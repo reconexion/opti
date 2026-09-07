@@ -36,7 +36,7 @@ export default function LoginPage({ onLogin }) {
           <img src={logo} alt="Gaffas Correctas" />
           <div>
             <div className="auth-screen__brand-name">OptiScale</div>
-            <div className="auth-screen__brand-tag">Módulo clínico RECEVI</div>
+            <div className="auth-screen__brand-tag">Sistema de gestión clínica</div>
           </div>
         </div>
 

@@ -45,11 +45,11 @@ function roundedBarPath(x, width, yTip, yBase, radius) {
 }
 
 export default function RxComparisonChart({ anterior, actual }) {
-  const width = 640
-  const height = 260
-  const marginTop = 28
-  const marginBottom = 34
-  const marginX = 24
+  const width = 560
+  const height = 230
+  const marginTop = 24
+  const marginBottom = 32
+  const marginX = 20
   const plotWidth = width - marginX * 2
   const plotHeight = height - marginTop - marginBottom
   const baseline = marginTop + plotHeight / 2
@@ -59,6 +59,7 @@ export default function RxComparisonChart({ anterior, actual }) {
     num(actual?.[ojo]?.[campo]),
   ])
   const maxAbs = Math.max(1, ...values.map((v) => Math.abs(v))) * 1.2
+  const gridSteps = [0.25, 0.5, 0.75, 1]
 
   const categoryWidth = plotWidth / CATEGORIES.length
   const barThickness = Math.min(24, categoryWidth / 2 - 10)
@@ -69,7 +70,7 @@ export default function RxComparisonChart({ anterior, actual }) {
   }
 
   return (
-    <figure style={{ margin: 0 }}>
+    <figure style={{ margin: 0, width: '100%' }}>
       <figcaption
         style={{
           display: 'flex',
@@ -107,7 +108,22 @@ export default function RxComparisonChart({ anterior, actual }) {
         <span style={{ color: 'var(--ink-faint)' }}>Valores en dioptrías (D)</span>
       </figcaption>
 
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfica comparativa de graduación anterior contra actual, por ojo">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+        role="img"
+        aria-label="Gráfica comparativa de graduación anterior contra actual, por ojo"
+      >
+        {gridSteps.map((step) => {
+          const yTop = baseline - step * (plotHeight / 2)
+          const yBottom = baseline + step * (plotHeight / 2)
+          return (
+            <g key={step}>
+              <line x1={marginX} y1={yTop} x2={width - marginX} y2={yTop} stroke="var(--border, #e3e6ed)" strokeWidth="1" />
+              <line x1={marginX} y1={yBottom} x2={width - marginX} y2={yBottom} stroke="var(--border, #e3e6ed)" strokeWidth="1" />
+            </g>
+          )
+        })}
         <line
           x1={marginX}
           y1={baseline}

@@ -56,8 +56,12 @@ export default function Statistics() {
   const { sucursalActiva } = useSucursal()
   const verTodas = sucursalActiva === TODAS_LAS_SUCURSALES
   const patients = listPatients().filter((p) => coincideSucursal(p.sucursal, sucursalActiva))
-  const visits = listVisits().filter((v) => coincideSucursal(v.sucursal, sucursalActiva))
+  // La sucursal de una visita es la de su paciente (no guarda su propia
+  // copia), así que filtrar por sucursal es filtrar por "su paciente ya
+  // quedó incluido arriba".
+  const visits = listVisits().filter((v) => patients.some((p) => p.id === v.patientId))
   const sucursales = listSucursales()
+  const sucursalPorPaciente = new Map(patients.map((p) => [p.id, p.sucursal]))
   const visitasEsteMes = visits.filter((v) => v.fecha?.slice(0, 7) === todayISO().slice(0, 7)).length
 
   const diagnosticoCounts = countBy(
@@ -89,7 +93,7 @@ export default function Statistics() {
     .filter((c) => comparacionCounts[c])
     .map((c) => ({ label: c, count: comparacionCounts[c] }))
 
-  const sucursalCounts = countBy(visits, (v) => v.sucursal)
+  const sucursalCounts = countBy(visits, (v) => sucursalPorPaciente.get(v.patientId))
 
   return (
     <div>

@@ -1,6 +1,7 @@
 import { Search, UserPlus, Users, ClipboardList, CalendarClock } from 'lucide-react'
 import { listPatients, listVisits } from '../lib/storage.js'
-import { useSucursal, coincideSucursal, TODAS_LAS_SUCURSALES } from '../context/sucursalContext.js'
+import { useSucursal, useSucursales, coincideSucursal, TODAS_LAS_SUCURSALES } from '../context/sucursalContext.js'
+import logo from '../assets/gaffas-logo.jpg'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -8,8 +9,12 @@ function todayISO() {
 
 export default function Dashboard({ session, onNavigate }) {
   const { sucursalActiva } = useSucursal()
+  const { sucursales } = useSucursales()
   const patients = listPatients().filter((p) => coincideSucursal(p.sucursal, sucursalActiva))
-  const visits = listVisits().filter((v) => coincideSucursal(v.sucursal, sucursalActiva))
+  // La sucursal de una visita es la de su paciente (no guarda su propia
+  // copia), así que filtrar por sucursal es filtrar por "su paciente ya
+  // quedó incluido arriba".
+  const visits = listVisits().filter((v) => patients.some((p) => p.id === v.patientId))
   const visitasHoy = visits.filter((v) => v.fecha === todayISO()).length
   const recientes = [...visits].sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn)).slice(0, 5)
 
@@ -17,17 +22,39 @@ export default function Dashboard({ session, onNavigate }) {
     return patients.find((p) => p.id === id)?.nombre || 'Paciente'
   }
 
+  function sucursalDePaciente(id) {
+    return patients.find((p) => p.id === id)?.sucursal || 'Sin sucursal'
+  }
+
   const palabras = session.nombre.split(' ')
   const primerNombre = palabras.find((w) => !w.endsWith('.')) || palabras[0]
+  const sucursalObj =
+    sucursalActiva !== TODAS_LAS_SUCURSALES ? sucursales.find((s) => s.nombre === sucursalActiva) : null
 
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1>Hola, {primerNombre}</h1>
-          <p>
-            Resumen de {sucursalActiva === TODAS_LAS_SUCURSALES ? 'todas las sucursales' : sucursalActiva}.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {sucursalObj && (
+            <img
+              src={sucursalObj.foto || logo}
+              alt=""
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 12,
+                objectFit: 'cover',
+                flexShrink: 0,
+                border: '1px solid var(--border)',
+              }}
+            />
+          )}
+          <div>
+            <h1>Hola, {primerNombre}</h1>
+            <p>
+              Resumen de {sucursalActiva === TODAS_LAS_SUCURSALES ? 'todas las sucursales' : sucursalActiva}.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -78,7 +105,7 @@ export default function Dashboard({ session, onNavigate }) {
               <div>
                 <div className="result-row__name">{nombrePaciente(v.patientId)}</div>
                 <div className="result-row__meta">
-                  {v.fecha} · {v.optometrista} · {v.sucursal}
+                  {v.fecha} · {v.optometrista} · {sucursalDePaciente(v.patientId)}
                 </div>
               </div>
               <CalendarClock size={16} color="var(--ink-faint)" />

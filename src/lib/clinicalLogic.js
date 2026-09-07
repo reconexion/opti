@@ -1,4 +1,4 @@
-// Lógica clínica de RECEVI: mismas reglas de clasificación y redacción
+// Lógica clínica: mismas reglas de clasificación y redacción
 // que el Excel "Reporte Evolución Visión", portadas a funciones puras.
 
 export const ANEXOS = [
